@@ -167,6 +167,9 @@ class ErasureClient(discord.Client):
         slowmode_command = app_commands.Command(name="slowmode", description="set slowmode in the current channel/thread", callback=self.slowmode)
         self.tree.add_command(slowmode_command, guild=self.guild)
 
+        voicechannel_command = app_commands.Command(name="makevoiceroom", description="creates a new room for voicechats", callback=self.voiceroom)
+        self.tree.add_command(voicechannel_command, guild=self.guild)
+
         self.tree.copy_global_to(guild=self.guild)
         await self.tree.sync(guild=self.guild)
         channel = self.get_channel(config['debug_channel'])
@@ -381,8 +384,33 @@ EXCEPTIONS: {count['exceptions']}```"""
             prefix = "SPOILER_" if spoiler_tier != 5 else "" # for some reason this is how discord decides if an image has a spoiler tag or not
             await interaction.response.send_message(roomfetch.normalise_room_name(floor), file=discord.File(img, prefix + floor + ".png"), ephemeral=whisper)
             
+    async def voiceroom(self, interaction: discord.Interaction,):
+        if interaction.user.get_role(config['given_role_t2']) == None:
+            await interaction.response.send_message(f"<:disgrayced:1150932813978280057> Permission denied.", ephemeral=True)
+            return  # Only Verified users can ask for extra voice channels
+        # Get list voice channel ids in a hardset 'Category'
+        for channel in self.guild.channels: # Category name capitilization is important here. Even if a user normally cannot seen it, we care.
+            if str(channel.category) == 'Voice Channels':   # Could definitely use 'category.id' though
+                if channel.id != self.guild.afk_channel.id: # ignore the afk channel
+                    print(channel.id)
+                    c = await self.guild.fetch_channel(channel.id)  # Is the voice currently active
+                if not c.members:
+                    await interaction.response.send_message("There are currently open in voice channels.", ephemeral=True)
+                    return  # Found room in voice channels, abort
+                
+        #### TWO PATHS FROM HERE
+        ### CREATE FRESH VOICE-CHANNEL (AND ASSOCIATED TEXT-CHANNEL)
+        ### MAKE VISIBLE ALREADY EXISTING VOICE/TEXT-CHANNELS IN # ORDER (3 > 4 >..)
+        await interaction.response.send_message("Insert Positive Response", ephemeral=True)
+    ##### OR DIFFERENT METHOD ENTIRELY, CONSIDERING on_raw_reaction_add IS IN USE, WE DON'T CARE TOO MUCH ABOUT POINTLESS PROCESSING TIME?
+    '''
+    async def on_voice_state_update(self, event):   # ref: Called when a Member changes their VoiceState.
+        if event.after.channel.members:             # voice channel has members inside
+            ## check the other channels if they're full
+                ## if so, make room 
+    '''
 
-
+    
 client = ErasureClient(intents=intents)
 
 def main():
